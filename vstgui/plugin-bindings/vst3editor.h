@@ -122,7 +122,7 @@ public:
 
 	bool setEditorSizeConstrains (const CPoint& newMinimumSize, const CPoint& newMaximumSize);
 	void getEditorSizeConstrains (CPoint& minimumSize, CPoint& maximumSize) const;
-	bool requestResize (const CPoint& newSize);
+	virtual bool requestResize (const CPoint& newSize);
 
 	void setZoomFactor (double factor);
 	double getZoomFactor () const { return zoomFactor; }

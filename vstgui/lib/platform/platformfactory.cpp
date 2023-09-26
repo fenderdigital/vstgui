@@ -4,6 +4,8 @@
 
 #include "platformfactory.h"
 
+#include "../viewrendering/viewrenderfactory.h"
+
 #if MAC
 #include "mac/macfactory.h"
 using VSTGUIPlatformFactory = VSTGUI::MacFactory;
@@ -30,7 +32,8 @@ void setPlatformFactory (PlatformFactoryPtr&& f)
 void initPlatform (PlatformInstanceHandle instance)
 {
 	vstgui_assert (!gPlatformFactory);
-	setPlatformFactory (std::unique_ptr<IPlatformFactory> (new VSTGUIPlatformFactory (instance)));
+	std::unique_ptr<IPlatformFactory> platformFactory (new VSTGUIPlatformFactory(instance));
+	setPlatformFactory (std::unique_ptr<IPlatformFactory> (new Presonus::ViewRenderFactory (std::move (platformFactory))));
 }
 
 //-----------------------------------------------------------------------------

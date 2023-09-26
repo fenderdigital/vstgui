@@ -183,6 +183,10 @@ set(${target}_common_sources
     vstguiinit.cpp
     vstguiinit.h
     vstkeycode.h
+	viewrendering/viewrenderfactory.h
+	viewrendering/viewrenderfactory.cpp
+	viewrendering/viewrenderframe.h
+	viewrendering/viewrenderframe.cpp
 )
 
   ##########################################################################################
@@ -325,6 +329,10 @@ endif()
 
 ##########################################################################################
 add_library(${target} STATIC ${${target}_sources})
+
+find_path (presonusinterfaces_dir NAMES ipslviewrendering.h HINTS ${SDK_ROOT}/presonus)
+
+target_include_directories (${target} PRIVATE ${presonusinterfaces_dir} ${SDK_ROOT})
 
 target_compile_definitions(${target} ${VSTGUI_COMPILE_DEFINITIONS})
 vstgui_set_cxx_version(${target} 17)
