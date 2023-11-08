@@ -7,6 +7,7 @@
 #include "cairogradient.h"
 #include "cairographicscontext.h"
 #include "x11frame.h"
+#include "waylandframe.h"
 #include "../iplatformframecallback.h"
 #include "../common/fileresourceinputstream.h"
 #include "../iplatformresourceinputstream.h"
@@ -94,6 +95,10 @@ PlatformFramePtr LinuxFactory::createFrame (IPlatformFrameCallback* frame, const
 	{
 		auto x11Parent = reinterpret_cast<XID> (parent);
 		return makeOwned<X11::Frame> (frame, size, x11Parent, config);
+	}
+	else if (parentType == PlatformType::kWaylandSurface)
+	{
+		return makeOwned<Wayland::Frame> (frame, size, config);
 	}
 	return nullptr;
 }

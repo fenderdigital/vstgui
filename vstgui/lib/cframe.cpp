@@ -1,4 +1,4 @@
-// This file is part of VSTGUI. It is subject to the license terms 
+// This file is part of VSTGUI. It is subject to the license terms
 // in the LICENSE file found in the top-level directory of this
 // distribution and at http://github.com/steinbergmedia/vstgui/LICENSE
 
@@ -73,7 +73,7 @@ struct CFrame::Impl
 	CView* focusView {nullptr};
 	CView* activeFocusView {nullptr};
 	CollectInvalidRects* collectInvalidRects {nullptr};
-	
+
 	ViewList mouseViews;
 	ModalViewSessionStack modalViewSessionStack;
 	DispatchList<CView*> windowActiveStateChangeViews;
@@ -121,9 +121,9 @@ struct CFrame::Impl
 // CFrame Implementation
 //-----------------------------------------------------------------------------
 /*! @class CFrame
-It creates a platform dependend view object. 
+It creates a platform dependend view object.
 
-On Mac OS X it is a HIView or NSView.\n 
+On Mac OS X it is a HIView or NSView.\n
 On Windows it's a WS_CHILD Window.
 
 */
@@ -156,7 +156,7 @@ void CFrame::beforeDelete ()
 	{
 		DebugPrint ("Warning: Scale Factor Changed Listeners are not cleaned up correctly.\n If you register a change listener you must also unregister it !\n");
 	}
-	
+
 	if (!pImpl->mouseObservers.empty ())
 	{
 		DebugPrint ("Warning: Mouse Observers are not cleaned up correctly.\n If you register a mouse oberver you must also unregister it !\n");
@@ -175,10 +175,10 @@ void CFrame::beforeDelete ()
 	}
 
 	setViewFlag (kIsAttached, false);
-	
+
 	delete pImpl;
 	pImpl = nullptr;
-	
+
 	CViewContainer::beforeDelete ();
 }
 
@@ -203,7 +203,7 @@ void CFrame::close ()
 //-----------------------------------------------------------------------------
 bool CFrame::open (void* systemWin, PlatformType systemWindowType, IPlatformFrameConfig* config)
 {
-	if (!systemWin || isAttached ())
+	if ((!systemWin && systemWindowType != PlatformType::kWaylandSurface) || isAttached ())
 		return false;
 
 	pImpl->platformFrame = getPlatformFactory ().createFrame (this, getViewSize (), systemWin,
@@ -216,7 +216,7 @@ bool CFrame::open (void* systemWin, PlatformType systemWindowType, IPlatformFram
 	CollectInvalidRects cir (this);
 
 	attached (this);
-	
+
 	setParentView (nullptr);
 
 	invalid ();
@@ -236,7 +236,7 @@ bool CFrame::attached (CView* parent)
 
 		for (const auto& pV : getChildren ())
 			pV->attached (this);
-		
+
 		return true;
 	}
 	return false;
@@ -685,7 +685,7 @@ void CFrame::dispatchMouseUpEvent (MouseUpEvent& event)
 {
 	auto transformedMousePosition = event.mousePosition;
 	getTransform ().inverse ().transform (transformedMousePosition);
-	
+
 	auto f = finally ([this] () { setMouseDownView (nullptr); });
 
 	callMouseObserverOtherMouseEvent (event);
@@ -950,7 +950,7 @@ bool CFrame::setModalView (CView* pView)
 		endLegacyModalViewSession ();
 	else
 		pImpl->legacyModalViewSessionID = beginModalViewSession (pView);
-	
+
 	return true;
 }
 
@@ -1226,11 +1226,11 @@ void CFrame::setFocusView (CView *pView)
 	}
 	if (pImpl->focusView && pImpl->focusView->wantsFocus ())
 		pImpl->focusView->takeFocus ();
-	
+
 	pImpl->focusViewObservers.forEach ([&] (IFocusViewObserver* observer) {
 		observer->onFocusViewChanged (this, pImpl->focusView, pOldFocusView);
 	});
-	
+
 	recursion = false;
 }
 

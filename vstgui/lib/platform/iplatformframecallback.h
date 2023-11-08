@@ -1,4 +1,4 @@
-// This file is part of VSTGUI. It is subject to the license terms 
+// This file is part of VSTGUI. It is subject to the license terms
 // in the LICENSE file found in the top-level directory of this
 // distribution and at http://github.com/steinbergmedia/vstgui/LICENSE
 
@@ -20,6 +20,7 @@ enum class PlatformType : int32_t {
 	kHWNDTopLevel,	// Windows HWDN Top Level (non child)
 	kX11EmbedWindowID,	// X11 XID
 	kGdkWindow, // GdkWindow
+	kWaylandSurface, // Wayland Surface
 
 	kDefaultNative = -1
 };
@@ -34,7 +35,7 @@ public:
 
 	virtual void platformDrawRects (const PlatformGraphicsDeviceContextPtr& context,
 									double scaleFactor, const std::vector<CRect>& rects) = 0;
-	
+
 	virtual void platformOnEvent (Event& event) = 0;
 
 	virtual DragOperation platformOnDragEnter (DragEventData data) = 0;
@@ -44,7 +45,7 @@ public:
 
 	virtual void platformOnActivate (bool state) = 0;
 	virtual void platformOnWindowActivate (bool state) = 0;
-	
+
 	virtual void platformScaleFactorChanged (double newScaleFactor) = 0;
 
 #if VSTGUI_TOUCH_EVENT_HANDLING

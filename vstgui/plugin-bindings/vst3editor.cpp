@@ -1,4 +1,4 @@
-// This file is part of VSTGUI. It is subject to the license terms 
+// This file is part of VSTGUI. It is subject to the license terms
 // in the LICENSE file found in the top-level directory of this
 // distribution and at http://github.com/steinbergmedia/vstgui/LICENSE
 
@@ -25,7 +25,9 @@
 
 #if LINUX
 #include "../lib/platform/linux/x11frame.h"
+#include "../lib/platform/linux/waylandframe.h"
 #include "pluginterfaces/gui/iplugview.h"
+#include "presonus/ipslwaylandframe.h"
 #endif
 
 #if defined(kVstVersionMajor) && defined(kVstVersionMinor)
@@ -148,7 +150,7 @@ public:
 		else
 			updateControlValue (value);
 	}
-	
+
 	void removeControl (CControl* control)
 	{
 		for (const auto& c : controls)
@@ -161,12 +163,12 @@ public:
 			}
 		}
 	}
-	
+
 	bool containsControl (CControl* control)
 	{
 		return std::find (controls.begin (), controls.end (), control) != controls.end ();
 	}
-	
+
 	void PLUGIN_API update (FUnknown* changedUnknown, Steinberg::int32 message) override
 	{
 		if (message == IDependent::kChanged && parameter)
@@ -175,7 +177,7 @@ public:
 		}
 	}
 
-	Steinberg::Vst::ParamID getParameterID () 
+	Steinberg::Vst::ParamID getParameterID ()
 	{
 		if (parameter)
 			return parameter->getInfo ().id;
@@ -184,13 +186,13 @@ public:
 			return static_cast<Steinberg::Vst::ParamID> (control->getTag ());
 		return 0xFFFFFFFF;
 	}
-	
+
 	void beginEdit ()
 	{
 		if (parameter)
 			editController->beginEdit (getParameterID ());
 	}
-	
+
 	void endEdit ()
 	{
 		if (parameter)
@@ -350,7 +352,7 @@ protected:
 	}
 	Steinberg::Vst::EditController* editController;
 	Steinberg::Vst::Parameter* parameter;
-	
+
 	using ControlList = std::list<CControl*>;
 	ControlList controls;
 };
@@ -552,7 +554,7 @@ bool VST3Editor::setEditorSizeConstrains (const CPoint& newMinimumSize, const CP
 			if (newSize != currentSize)
 				requestResize (CPoint (newSize.getWidth (), newSize.getHeight ()));
 		}
-		
+
 		return true;
 	}
 	return false;
@@ -783,7 +785,7 @@ public:
 		item->execute ();
 		return Steinberg::kResultTrue;
 	}
-	
+
 	OBJ_METHODS(ContextMenuTarget, Steinberg::FObject)
 	FUNKNOWN_METHODS(Steinberg::Vst::IContextMenuTarget, Steinberg::FObject)
 protected:
@@ -1175,6 +1177,65 @@ private:
 	TimerHandlers timerHandlers;
 	Steinberg::FUnknownPtr<Steinberg::Linux::IRunLoop> runLoop;
 };
+
+class WaylandHost : public Wayland::IWaylandHost, public AtomicReferenceCounted
+{
+public:
+	virtual wl_display* openWaylandConnection () final
+	{
+		if(!waylandHost)
+			return nullptr;
+
+		return waylandHost->openWaylandConnection ();
+	}
+
+	virtual bool closeWaylandConnection (wl_display* display) final
+	{
+		if(!waylandHost)
+			return false;
+
+		return waylandHost->closeWaylandConnection (display) == Steinberg::kResultOk;
+	}
+
+	WaylandHost (Steinberg::FUnknown* waylandHost) : waylandHost (waylandHost) {}
+private:
+	Steinberg::FUnknownPtr<Presonus::IWaylandHost> waylandHost;
+};
+
+class WaylandFrame : public Wayland::IWaylandFrame, public AtomicReferenceCounted
+{
+public:
+	wl_surface* getWaylandSurface (wl_display* display) final
+	{
+		if(!waylandFrame)
+			return nullptr;
+
+		return waylandFrame->getWaylandSurface (display);
+	}
+
+	xdg_surface* getParentSurface (CRect& parentSize, wl_display* display) final
+	{
+		if(!waylandFrame)
+			return nullptr;
+
+		Steinberg::ViewRect viewRect;
+		xdg_surface* surface = waylandFrame->getParentSurface (viewRect, display);
+		parentSize = CRect (viewRect.left, viewRect.top, viewRect.right, viewRect.bottom);
+		return surface;
+	}
+
+	xdg_toplevel* getParentToplevel (wl_display* display) final
+	{
+		if(!waylandFrame)
+			return nullptr;
+
+		return waylandFrame->getParentToplevel (display);
+	}
+
+	WaylandFrame (Steinberg::FUnknown* waylandFrame) : waylandFrame (waylandFrame) {}
+private:
+	Steinberg::FUnknownPtr<Presonus::IWaylandFrame> waylandFrame;
+};
 #endif
 
 #define kFrameEnableFocusDrawingAttr "frame-enable-focus-drawing"
@@ -1247,12 +1308,26 @@ bool PLUGIN_API VST3Editor::open (void* parent, const PlatformType& type)
 
 	IPlatformFrameConfig* config = nullptr;
 #if LINUX
-	X11::FrameConfig x11config;
-	x11config.runLoop = owned (new RunLoop (plugFrame));
-	config = &x11config;
+	if(type == PlatformType::kWaylandSurface)
+	{
+		Wayland::FrameConfig* waylandConfig = new Wayland::FrameConfig;
+		waylandConfig->runLoop = owned (new RunLoop (plugFrame));
+		waylandConfig->waylandHost = owned (new WaylandHost (plugFrame));
+		waylandConfig->waylandFrame = owned (new WaylandFrame (plugFrame));
+		config = waylandConfig;
+	}
+	else
+	{
+		X11::FrameConfig* x11config = new X11::FrameConfig;
+		x11config->runLoop = owned (new RunLoop (plugFrame));
+		config = x11config;
+	}
 #endif
 
 	getFrame ()->open (parent, type, config);
+
+	delete config;
+	config = nullptr;
 
 	if (delegate)
 		delegate->didOpen (this);
@@ -1854,7 +1929,7 @@ bool VST3Editor::enableEditing (bool state)
 						description->setFilePath (filePath->c_str ());
 				}
 			}
-			
+
 			getFrame ()->setTransform (CGraphicsTransform ());
 			nonEditRect = getFrame ()->getViewSize ();
 			description->setController (this);
@@ -1876,7 +1951,7 @@ bool VST3Editor::enableEditing (bool state)
 				getFrame ()->setFocusColor (focusColor);
 				getFrame ()->setFocusDrawingEnabled (true);
 				getFrame ()->setFocusWidth (1);
-				
+
 				COptionMenu* fileMenu = editController->getMenuController ()->getFileMenu ();
 				if (fileMenu)
 				{
